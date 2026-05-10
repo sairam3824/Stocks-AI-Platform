@@ -336,7 +336,3 @@ Contributions are welcome! Please follow these steps:
 ## 📄 License
 
 This project is licensed under the MIT License — see the [LICENSE](./LICENSE) file for details.
-
----
-
-**Built with ❤️ by [Sai Ram](https://github.com/sairam3824)**
