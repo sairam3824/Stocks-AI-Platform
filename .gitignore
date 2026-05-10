@@ -14,11 +14,14 @@ data/*.sqlite
 # Reports and generated content
 config/reports/
 reports/
+config/docs/
+docs/
 
 # IDEs
 .vscode/
 .idea/
 .DS_Store
+.codex/
 
 # Testing
 .pytest_cache/
