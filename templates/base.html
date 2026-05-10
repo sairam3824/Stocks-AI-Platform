@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ app_name }} | {% block title %}Dashboard{% endblock %}</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+
+    :root {
+      --primary: #0f172a;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+      --radius: 12px;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: var(--bg);
+      background-image:
+        radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.05) 0px, transparent 50%),
+        radial-gradient(at 100% 0%, rgba(16, 185, 129, 0.05) 0px, transparent 50%);
+      color: var(--text-main);
+      line-height: 1.5;
+    }
+
+    header {
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 2rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .brand::before {
+      content: '📈';
+      font-size: 1.25rem;
+      -webkit-text-fill-color: initial;
+    }
+
+    nav {
+      display: flex;
+      gap: 1.5rem;
+      align-items: center;
+    }
+
+    nav a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 0.9375rem;
+      transition: color 0.2s, transform 0.2s;
+    }
+
+    nav a:hover {
+      color: var(--accent);
+      transform: translateY(-1px);
+    }
+
+    nav a.active {
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 3rem 1.5rem;
+    }
+
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      padding: 2rem;
+      transition: box-shadow 0.3s ease;
+    }
+
+    .card:hover {
+      box-shadow: var(--shadow-lg);
+    }
+
+    h1,
+    h2,
+    h3 {
+      font-family: 'Outfit', sans-serif;
+      color: var(--primary);
+      margin-top: 0;
+      letter-spacing: -0.01em;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 1.5rem;
+    }
+
+    h2 {
+      font-size: 1.75rem;
+      font-weight: 600;
+      margin-bottom: 1.25rem;
+    }
+
+    h3 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+
+    p {
+      margin-bottom: 1.25rem;
+      color: var(--text-muted);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.75rem 1.5rem;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 0.9375rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+      gap: 0.5rem;
+      text-decoration: none;
+    }
+
+    .btn-block {
+      width: 100%;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    .btn-accent {
+      background: white;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+    }
+
+    .btn-accent:hover {
+      background: #f0f7ff;
+      transform: translateY(-1px);
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 0.9375rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      background: #fcfdfe;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: var(--text-main);
+    }
+
+    .grid {
+      display: grid;
+      gap: 2rem;
+    }
+
+    .grid-two {
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.25rem 0.75rem;
+      background: #f1f5f9;
+      color: #475569;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.025em;
+    }
+
+    .flash {
+      padding: 1rem 1.25rem;
+      border-radius: var(--radius);
+      background: #fee2e2;
+      color: #b91c1c;
+      border: 1px solid #fecaca;
+      margin-bottom: 2rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .flash::before {
+      content: '⚠️';
+    }
+
+    .muted {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    .suggestions {
+      position: absolute;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-top: 4px;
+      display: none;
+      box-shadow: var(--shadow-lg);
+      z-index: 20;
+      width: 100%;
+    }
+
+    .suggestion {
+      padding: 0.75rem 1rem;
+      cursor: pointer;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .suggestion:last-child {
+      border-bottom: none;
+    }
+
+    .suggestion:hover {
+      background: #f8fafc;
+    }
+
+    /* Animations */
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .animate-in {
+      animation: fadeIn 0.5s ease-out forwards;
+    }
+
+    @media (max-width: 768px) {
+      header {
+        padding: 1rem;
+        flex-direction: column;
+        gap: 1rem;
+      }
+
+      .container {
+        padding: 2rem 1rem;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <div class="brand">{{ app_name }}</div>
+    <nav>
+      {% if session.user_id %}
+      <a href="{{ url_for('dashboard') }}"
+        class="{% if request.endpoint == 'dashboard' %}active{% endif %}">Dashboard</a>
+      <a href="{{ url_for('live_view') }}" class="{% if request.endpoint == 'live_view' %}active{% endif %}">Live</a>
+      <a href="/trades" class="{% if request.endpoint == 'trades_view' %}active{% endif %}">Trades</a>
+      <a href="/models" class="{% if request.endpoint == 'model_leaderboard_view' %}active{% endif %}">Models</a>
+      <a href="/settings/engine" class="{% if request.path.startswith('/settings/engine') %}active{% endif %}">Engine</a>
+      <a href="/settings/security" class="{% if request.path.startswith('/settings/security') %}active{% endif %}">Security</a>
+      <a href="{{ url_for('report_list') }}"
+        class="{% if request.endpoint == 'report_list' %}active{% endif %}">Reports</a>
+      <a href="{{ url_for('logout') }}">Logout</a>
+      {% else %}
+      <a href="{{ url_for('login') }}" class="{% if request.endpoint == 'login' %}active{% endif %}">Login</a>
+      {% endif %}
+    </nav>
+  </header>
+
+  <div class="container">
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+    {% for message in messages %}
+    <div class="flash">{{ message }}</div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </div>
+
+  {% if session.user_id %}
+  <div id="progress-bar-wrapper"
+    style="position: fixed; left: 0; right: 0; bottom: 0; display: none; background: rgba(15, 23, 42, 0.06); z-index: 900;">
+    <div style="max-width: 1200px; margin: 0 auto; padding: 12px 16px; display: flex; align-items: center; gap: 12px;">
+      <div style="flex: 1; background: #e2e8f0; border-radius: 999px; overflow: hidden; height: 10px;">
+        <div id="progress-bar"
+          style="height: 100%; width: 0%; background: var(--accent); transition: width 0.3s ease;"></div>
+      </div>
+      <span id="progress-text" class="muted" style="white-space: nowrap;">Forecast running...</span>
+    </div>
+  </div>
+
+  <div id="toast"
+    style="position: fixed; bottom: 24px; right: 24px; background: white; border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; box-shadow: var(--shadow-lg); display: none; z-index: 999;">
+    <strong id="toast-title" style="display: block; margin-bottom: 4px;">Update</strong>
+    <span id="toast-message" class="muted"></span>
+  </div>
+  <script>
+    let lastRunId = null;
+    let lastRunStatus = null;
+
+    function showToast(title, message) {
+      const toast = document.getElementById('toast');
+      const toastTitle = document.getElementById('toast-title');
+      const toastMessage = document.getElementById('toast-message');
+      toastTitle.textContent = title;
+      toastMessage.textContent = message;
+      toast.style.display = 'block';
+      setTimeout(() => {
+        toast.style.display = 'none';
+      }, 6000);
+    }
+
+    function setProgressVisible(visible, message, progress) {
+      const wrapper = document.getElementById('progress-bar-wrapper');
+      const text = document.getElementById('progress-text');
+      const bar = document.getElementById('progress-bar');
+      wrapper.style.display = visible ? 'block' : 'none';
+      if (message) text.textContent = message;
+      if (typeof progress === 'number') {
+        const safe = Math.min(100, Math.max(0, progress));
+        bar.style.width = `${safe}%`;
+      }
+    }
+
+    async function pollRuns() {
+      try {
+        const response = await fetch('/api/runs/latest');
+        const data = await response.json();
+        const run = data.run;
+        if (!run) return;
+        if (run.status === 'RUNNING' || run.status === 'QUEUED') {
+          const label = run.message || (run.status === 'QUEUED' ? 'Forecast queued...' : 'Forecast running...');
+          setProgressVisible(true, label, run.progress ?? 5);
+        } else {
+          setProgressVisible(false, '', 0);
+        }
+        if (lastRunId === null) {
+          lastRunId = run.id;
+          lastRunStatus = run.status;
+          return;
+        }
+        if (run.id !== lastRunId || run.status !== lastRunStatus) {
+          lastRunId = run.id;
+          lastRunStatus = run.status;
+          if (run.status === 'DONE') {
+            showToast('Report Ready', `Forecast completed (${run.report_date}).`);
+          } else if (run.status === 'FAILED') {
+            showToast('Forecast Failed', run.message || 'Something went wrong.');
+          }
+        }
+      } catch (err) {
+        // Silent fail
+      }
+    }
+
+    setInterval(pollRuns, 5000);
+  </script>
+  {% endif %}
+</body>
+
+</html>

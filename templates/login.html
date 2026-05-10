@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Login{% endblock %}
+{% block content %}
+<div class="animate-in" style="max-width: 1000px; margin: 0 auto;">
+  <div style="text-align: center; margin-bottom: 4rem;">
+    <h1 style="font-size: 3.5rem; margin-bottom: 1rem;">Master Your <span style="color: var(--accent);">Stock
+        Strategy</span></h1>
+    <p style="font-size: 1.25rem; max-width: 600px; margin-left: auto; margin-right: auto;">
+      The intelligent dashboard for tracking, forecasting, and managing your investment portfolio with precision.
+    </p>
+  </div>
+
+  <div class="grid grid-two" style="align-items: start;">
+    <div style="display: flex; flex-direction: column; gap: 2rem;">
+      <div class="card" style="border-left: 4px solid var(--accent);">
+        <h3 style="display: flex; align-items: center; gap: 0.75rem;">
+          <span style="font-size: 1.5rem;">📊</span> Advanced Forecasting
+        </h3>
+        <p>Generate 21-day predictive signals using historical data and sentiment analysis.</p>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <span class="pill">Stooq Integration</span>
+          <span class="pill">Trend Analysis</span>
+        </div>
+      </div>
+
+      <div class="card" style="border-left: 4px solid var(--success);">
+        <h3 style="display: flex; align-items: center; gap: 0.75rem;">
+          <span style="font-size: 1.5rem;">⚡</span> Real-time Monitoring
+        </h3>
+        <p>Stay updated with live stock quotes and interactive charts for every ticker in your list.</p>
+      </div>
+
+      <div class="card" style="border-left: 4px solid var(--warning);">
+        <h3 style="display: flex; align-items: center; gap: 0.75rem;">
+          <span style="font-size: 1.5rem;">🔒</span> Private & Secure
+        </h3>
+        <p>Your data stays local. We prioritize your privacy with local-first storage and encrypted sessions.</p>
+      </div>
+    </div>
+
+    <div class="card" style="position: sticky; top: 6rem;">
+      <h2 style="margin-bottom: 0.5rem;">Welcome back</h2>
+      <p style="margin-bottom: 2rem;">Sign in to your dashboard</p>
+
+      <form method="post" style="display: flex; flex-direction: column; gap: 1.5rem;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div>
+          <label>Email Address</label>
+          <input type="email" name="email" placeholder="name@company.com" required autofocus>
+        </div>
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <label>Password</label>
+          </div>
+          <input type="password" name="password" placeholder="••••••••" required>
+        </div>
+        <div>
+          <label>OTP Code (if 2FA enabled)</label>
+          <input type="text" name="otp_code" placeholder="123456">
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">
+          Login to Dashboard
+        </button>
+      </form>
+
+      <div style="margin-top: 1rem;">
+        <a href="{{ url_for('forgot_password') }}">Forgot password?</a>
+      </div>
+
+      <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border); text-align: center;">
+        <p class="muted">
+          New to {{ app_name }}? <a href="{{ url_for('register') }}">Create an account</a>
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

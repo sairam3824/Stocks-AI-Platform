@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}Engine Settings{% endblock %}
+{% block content %}
+<div class="animate-in" style="max-width: 980px; margin: 0 auto;">
+  <div class="card" style="margin-bottom: 1.5rem;">
+    <h2>Engine Settings</h2>
+    <p class="muted" style="margin-bottom: 0.5rem;">
+      Tune recommendation ranking, sentiment ingestion, and scoring behavior for future runs.
+    </p>
+    <p class="muted" style="margin: 0;">
+      Workspace role: <strong>{{ workspace_role | upper }}</strong>
+      {% if not can_edit %} · Read-only{% endif %}
+    </p>
+  </div>
+
+  <div class="card">
+    {% if can_edit %}
+    <form method="post" style="display: grid; gap: 1.2rem;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div>
+          <label>Top Recommendations</label>
+          <input type="number" name="top_n" min="1" max="20" value="{{ config.top_n }}">
+        </div>
+        <div>
+          <label>News Items per Symbol</label>
+          <input type="number" name="news_max_items" min="1" max="25" value="{{ config.news_max_items }}">
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div>
+          <label>Default Min Return %</label>
+          <input type="number" step="0.1" min="0.1" max="100" name="min_return_pct"
+            value="{{ config.recommendation_defaults.min_return_pct }}">
+        </div>
+        <div>
+          <label>Default Max Drop %</label>
+          <input type="number" step="0.1" min="0.1" max="100" name="max_drop_pct"
+            value="{{ config.recommendation_defaults.max_drop_pct }}">
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div>
+          <label>News Source</label>
+          <select name="news_source">
+            {% for source in news_sources %}
+            <option value="{{ source }}" {% if source==config.news_source %}selected{% endif %}>{{ source | upper }}</option>
+            {% endfor %}
+          </select>
+          <p class="muted" style="margin: 0.35rem 0 0;">Use <code>mixed</code> to blend news + social sources.</p>
+        </div>
+        <div>
+          <label>Sentiment Provider</label>
+          <select name="sentiment_provider">
+            {% for provider in sentiment_providers %}
+            <option value="{{ provider }}" {% if provider==config.sentiment_provider %}selected{% endif %}>{{ provider | upper }}</option>
+            {% endfor %}
+          </select>
+          <p class="muted" style="margin: 0.35rem 0 0;"><code>auto</code> blends Ollama and lexicon signals.</p>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div>
+          <label>Sentiment Impact Weight</label>
+          <input type="number" name="sentiment_weight" min="0" max="3" step="0.05" value="{{ config.sentiment_weight }}">
+        </div>
+        <div>
+          <label>LLM Blend Weight (auto mode)</label>
+          <input type="number" name="sentiment_llm_weight" min="0" max="1" step="0.05"
+            value="{{ config.sentiment_llm_weight }}">
+        </div>
+      </div>
+
+      <div>
+        <label style="display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 600;">
+          <input type="checkbox" name="sentiment_enabled" value="1" {% if config.sentiment_enabled %}checked{% endif %}
+            style="width: auto;">
+          Enable sentiment in recommendation score
+        </label>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div>
+          <label>Ollama URL</label>
+          <input type="text" name="ollama_url" value="{{ config.ollama_url }}">
+        </div>
+        <div>
+          <label>Ollama Model</label>
+          <input type="text" name="ollama_model" value="{{ config.ollama_model }}">
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div>
+          <label>SerpAPI Key (optional)</label>
+          <input type="password" name="serpapi_api_key" placeholder="Leave blank to keep current">
+          <label style="display: inline-flex; align-items: center; gap: 0.4rem; margin-top: 0.5rem; font-weight: 500;">
+            <input type="checkbox" name="clear_serpapi_api_key" value="1" style="width: auto;">
+            Clear stored SerpAPI key
+          </label>
+        </div>
+        <div>
+          <label>X/Twitter Bearer Token (optional)</label>
+          <input type="password" name="x_api_bearer_token" placeholder="Leave blank to keep current">
+          <label style="display: inline-flex; align-items: center; gap: 0.4rem; margin-top: 0.5rem; font-weight: 500;">
+            <input type="checkbox" name="clear_x_api_bearer_token" value="1" style="width: auto;">
+            Clear stored X token
+          </label>
+        </div>
+      </div>
+
+      <div style="padding: 0.85rem 1rem; border-radius: 10px; border: 1px solid var(--border); background: #f8fafc;">
+        <p class="muted" style="margin: 0;">
+          Environment overrides:
+          SERPAPI={{ "ON" if env_overrides["serpapi_api_key"] else "OFF" }},
+          X={{ "ON" if env_overrides["x_api_bearer_token"] else "OFF" }},
+          OLLAMA_URL={{ "ON" if env_overrides["ollama_url"] else "OFF" }},
+          OLLAMA_MODEL={{ "ON" if env_overrides["ollama_model"] else "OFF" }},
+          SENTIMENT_PROVIDER={{ "ON" if env_overrides["sentiment_provider"] else "OFF" }}.
+        </p>
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width: fit-content;">Save Engine Settings</button>
+    </form>
+    {% else %}
+    <p class="muted" style="margin: 0;">Read-only workspace role. Ask an owner/admin to update engine settings.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

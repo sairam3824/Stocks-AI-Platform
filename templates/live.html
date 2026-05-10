@@ -1,0 +1,385 @@
+{% extends "base.html" %}
+{% block title %}Live View{% endblock %}
+{% block content %}
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<div class="card">
+  <div class="inline" style="justify-content: space-between;">
+    <div>
+      <h2>Live Forecast</h2>
+      {% if latest_report %}
+      <p class="muted">Latest report: {{ latest_report.report_date }}</p>
+      {% else %}
+      <p class="muted">No report yet. Run a forecast to generate charts.</p>
+      {% endif %}
+    </div>
+    {% if workspace_role in ['owner', 'admin'] %}
+    <form method="post" action="{{ url_for('run_forecast_route') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      {% if feature_intraday_model_selector %}
+      <select name="intraday_model" style="margin-right: 10px; width: 170px; display: inline-block;">
+        {% for model in intraday_models_enabled %}
+        <option value="{{ model }}" {% if model == intraday_model_default %}selected{% endif %}>{{ model | upper }}</option>
+        {% endfor %}
+      </select>
+      {% endif %}
+      <button type="submit" class="btn btn-primary">🚀 Run Forecast Now</button>
+    </form>
+    {% else %}
+    <span class="muted">Read-only workspace role</span>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card" style="margin-top: 24px;">
+  <div class="inline" style="justify-content: space-between; margin-bottom: 0.5rem;">
+    <h3>Live Prices (Kafka)</h3>
+    <button id="stream-toggle" class="btn btn-accent" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">
+      Pause Stream
+    </button>
+  </div>
+  <div class="muted" style="margin-bottom: 1rem;">Streaming via Kafka · updates every few seconds</div>
+  <div id="live-chart" style="height: 320px; margin-bottom: 16px;"></div>
+  <table id="live-price-table" style="width: 100%; border-collapse: collapse;">
+    <thead>
+      <tr>
+        <th>Symbol</th>
+        <th>Price</th>
+        <th>Timestamp</th>
+        <th>Source</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for chart in charts %}
+      <tr data-symbol="{{ chart.symbol }}" style="border-top: 1px solid var(--border);">
+        <td style="padding: 10px 0; font-weight: 600;">{{ chart.symbol }}</td>
+        <td class="price" style="padding: 10px 0;">-</td>
+        <td class="timestamp" style="padding: 10px 0;">-</td>
+        <td class="source" style="padding: 10px 0;">-</td>
+        <td class="status" style="padding: 10px 0;">-</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<style>
+  .chart-card-wrapper {
+    animation: fadeIn 0.4s ease-out;
+  }
+
+  #live-price-table tr.stale td {
+    color: #b45309;
+  }
+
+  #live-price-table tr.stale td.status {
+    font-weight: 600;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+</style>
+
+{% if charts %}
+<div class="card" style="margin-top: 24px; margin-bottom: 24px; display: flex; align-items: center; gap: 16px;">
+  <span style="font-weight: 600; color: var(--muted);">View Forecast For:</span>
+  <select id="stock-selector"
+    style="flex: 1; min-width: 200px; padding: 12px; border-radius: 12px; border: 1px solid var(--border); background: #f8fbfb; font-family: inherit; font-size: 16px; cursor: pointer; transition: all 0.2s;">
+    {% for market, items in charts_by_market %}
+    <optgroup label="{{ market_flags.get(market, '') }} {{ market }}">
+      {% for chart in items %}
+      <option value="{{ chart.symbol }}">{{ chart.symbol }} — {{ chart.company_name or 'Company' }}</option>
+      {% endfor %}
+    </optgroup>
+    {% endfor %}
+  </select>
+</div>
+
+<div id="charts-container">
+  {% for chart in charts %}
+  <div class="chart-card-wrapper" id="chart-{{ chart.symbol }}"
+    style="display: {% if loop.first %}block{% else %}none{% endif %};">
+    <div class="card">
+      <div class="inline" style="justify-content: space-between; margin-bottom: 8px;">
+        <div>
+          <h3 style="margin-bottom: 4px;">{{ chart.symbol }}</h3>
+          <div class="muted">{{ chart.company_name or 'Company name not set' }}</div>
+          <div class="muted">{{ market_flags.get(chart.market or 'Other', '') }} {{ chart.market or 'Market not set' }}
+          </div>
+        </div>
+        {% if not chart.available %}
+        <span class="pill">No chart yet</span>
+        {% endif %}
+      </div>
+
+      {% if latest_report and chart.available %}
+      <iframe src="{{ url_for('report_asset', report_date=latest_report.report_date, filename=chart.link) }}"
+        width="100%" height="580" style="border: none; border-radius: 8px;" loading="lazy"></iframe>
+      {% else %}
+      <div class="card" style="background: #f8fbfb; border-style: dashed; padding: 60px; text-align: center;">
+        <p class="muted" style="margin: 0;">Run a new forecast to generate this chart.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% if summary_rows %}
+<div class="card" style="margin-top: 24px;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h3>Summary Table</h3>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span>🔍</span>
+      <input type="text" id="live-table-search" placeholder="Filter..."
+        style="padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 14px;">
+    </div>
+  </div>
+  <div style="overflow-x: auto;">
+    <table id="live-summary-table" class="sortable-table" style="width: 100%; border-collapse: collapse;">
+      <thead>
+        <tr>
+          <th class="sortable" data-type="text">Symbol</th>
+          <th class="sortable" data-type="text">Model</th>
+          <th class="sortable" data-type="number">Confidence</th>
+          <th class="sortable" data-type="number">Exp Return</th>
+          <th class="sortable" data-type="text">Signal</th>
+          <th class="sortable" data-type="number">Score</th>
+          <th class="sortable" data-type="text">Sentiment</th>
+          <th class="sortable" data-type="number">Sent. Score</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in summary_rows %}
+        <tr style="border-top: 1px solid var(--border);">
+          <td style="padding: 12px 0; font-weight: 600; color: var(--accent);">{{ row.symbol }}</td>
+          <td style="padding: 12px 0;">{{ row.get('model_name', 'N/A') }}</td>
+          <td style="padding: 12px 0;">{{ "%.1f%%" | format(row.get('confidence_pct', 0)) }}</td>
+          <td style="padding: 12px 0;">{{ "%.2f%%" | format(row.expected_return_pct) }}</td>
+          <td style="padding: 12px 0;">{{ row.signal }}</td>
+          <td style="padding: 12px 0;">{{ "%.2f" | format(row.score) }}</td>
+          <td style="padding: 12px 0;">{{ row.get('sentiment_label', 'Neutral') }}</td>
+          <td style="padding: 12px 0;">{{ "%.2f" | format(row.get('sentiment_score', 0)) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<style>
+  th.sortable {
+    cursor: pointer;
+    user-select: none;
+    padding-bottom: 12px;
+    text-align: left;
+    color: var(--muted);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+  }
+
+  th.sortable:hover {
+    color: var(--accent);
+  }
+</style>
+
+<script>
+  // Sorting Logic
+  document.querySelectorAll('table.sortable-table').forEach((table) => {
+    const getCellValue = (row, idx) => row.children[idx].innerText.trim();
+    const comparer = (idx, type, asc) => (a, b) => {
+      const v1 = getCellValue(asc ? a : b, idx);
+      const v2 = getCellValue(asc ? b : a, idx);
+      if (type === 'number') {
+        const n1 = parseFloat(v1.replace('%', '')) || 0;
+        const n2 = parseFloat(v2.replace('%', '')) || 0;
+        return n1 - n2;
+      }
+      return v1.localeCompare(v2);
+    };
+
+    table.querySelectorAll('th.sortable').forEach((th, idx) => {
+      let asc = true;
+      th.addEventListener('click', () => {
+        const tbody = table.tBodies[0];
+        Array.from(tbody.querySelectorAll('tr'))
+          .sort(comparer(idx, th.dataset.type, asc))
+          .forEach(tr => tbody.appendChild(tr));
+
+        table.querySelectorAll('th.sortable').forEach(h => h.innerText = h.innerText.replace(/ [↑↓]$/, ''));
+        th.innerText += asc ? ' ↑' : ' ↓';
+        asc = !asc;
+      });
+    });
+  });
+
+  // Filtering Logic
+  const liveSearch = document.getElementById('live-table-search');
+  if (liveSearch) {
+    liveSearch.addEventListener('input', (e) => {
+      const term = e.target.value.toLowerCase();
+      const rows = document.querySelectorAll('#live-summary-table tbody tr');
+      rows.forEach(row => {
+        row.style.display = row.innerText.toLowerCase().includes(term) ? '' : 'none';
+      });
+    });
+  }
+</script>
+{% endif %}
+
+<script>
+  let liveChartInitialized = false;
+  let liveTraceIndex = {};
+  let liveData = {};
+  let livePaused = false;
+  let liveSource = null; // EventSource or WebSocket
+
+  function initLiveChart(symbols) {
+    const traces = symbols.map((symbol) => ({
+      x: [],
+      y: [],
+      name: symbol,
+      mode: 'lines',
+      line: { width: 2 }
+    }));
+    symbols.forEach((symbol, idx) => {
+      liveTraceIndex[symbol] = idx;
+      liveData[symbol] = { x: [], y: [] };
+    });
+    const layout = {
+      title: 'Live Tick Updates',
+      margin: { t: 32, r: 20, l: 40, b: 40 },
+      xaxis: { title: 'Time' },
+      yaxis: { title: 'Price' }
+    };
+    Plotly.newPlot('live-chart', traces, layout, { displayModeBar: false, responsive: true });
+    liveChartInitialized = true;
+  }
+
+  function applySnapshot(data) {
+    try {
+      const symbols = Object.keys(data);
+      if (!liveChartInitialized && symbols.length) {
+        initLiveChart(symbols);
+      }
+      Object.keys(data).forEach(symbol => {
+        const row = document.querySelector(`tr[data-symbol="${symbol}"]`);
+        if (!row) return;
+        const priceCell = row.querySelector('.price');
+        const tsCell = row.querySelector('.timestamp');
+        const sourceCell = row.querySelector('.source');
+        const statusCell = row.querySelector('.status');
+        if (priceCell) priceCell.textContent = Number(data[symbol].price || 0).toFixed(2);
+        if (tsCell) tsCell.textContent = data[symbol].timestamp || '-';
+        if (sourceCell) sourceCell.textContent = data[symbol].source || '-';
+
+        const ts = data[symbol].timestamp;
+        const parsed = Date.parse(ts);
+        let status = data[symbol].market_open === false ? 'Closed' : 'Live';
+        let isStale = false;
+        if (Number.isNaN(parsed)) {
+          status = 'Unknown';
+        } else {
+          const ageSeconds = (Date.now() - parsed) / 1000;
+          if (ageSeconds > {{ live_stale_seconds | int }}) {
+            status = 'Stale';
+            isStale = true;
+          }
+        }
+        row.classList.toggle('stale', isStale);
+        if (statusCell) statusCell.textContent = status;
+
+        if (liveChartInitialized && liveTraceIndex[symbol] !== undefined) {
+          const idx = liveTraceIndex[symbol];
+          const tsPoint = new Date();
+          Plotly.extendTraces('live-chart', { x: [[tsPoint]], y: [[Number(data[symbol].price || 0)]] }, [idx], 120);
+        }
+      });
+    } catch (err) {
+      // ignore parse errors
+    }
+  }
+
+  function startStream() {
+    const supportsWs = {{ 'true' if websocket_supported else 'false' }};
+    if (supportsWs) {
+      const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
+      const ws = new WebSocket(`${proto}://${window.location.host}/ws/live`);
+      ws.onmessage = (event) => {
+        try {
+          applySnapshot(JSON.parse(event.data));
+        } catch (_) {}
+      };
+      ws.onerror = () => {
+        ws.close();
+        const es = new EventSource('/api/live/stream');
+        es.onmessage = (event) => {
+          try {
+            applySnapshot(JSON.parse(event.data));
+          } catch (_) {}
+        };
+        liveSource = es;
+      };
+      liveSource = ws;
+      return;
+    }
+    const es = new EventSource('/api/live/stream');
+    es.onmessage = (event) => {
+      try {
+        applySnapshot(JSON.parse(event.data));
+      } catch (_) {}
+    };
+    liveSource = es;
+  }
+
+  startStream();
+
+  const toggleButton = document.getElementById('stream-toggle');
+  if (toggleButton) {
+    toggleButton.addEventListener('click', () => {
+      if (!livePaused) {
+        livePaused = true;
+        if (liveSource) {
+          if (typeof liveSource.close === 'function') {
+            liveSource.close();
+          }
+        }
+        toggleButton.textContent = 'Resume Stream';
+      } else {
+        livePaused = false;
+        startStream();
+        toggleButton.textContent = 'Pause Stream';
+      }
+    });
+  }
+
+  document.getElementById('stock-selector').addEventListener('change', function () {
+    const selected = this.value;
+    const cards = document.querySelectorAll('.chart-card-wrapper');
+    cards.forEach(card => {
+      card.style.display = 'none';
+    });
+    const selectedCard = document.getElementById('chart-' + selected);
+    if (selectedCard) {
+      selectedCard.style.display = 'block';
+    }
+  });
+
+  const selector = document.getElementById('stock-selector');
+  if (selector) {
+    selector.addEventListener('mouseover', () => selector.style.borderColor = 'var(--accent)');
+    selector.addEventListener('mouseout', () => selector.style.borderColor = 'var(--border)');
+  }
+</script>
+{% endif %}
+
+{% endblock %}

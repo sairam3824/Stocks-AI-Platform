@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Trades{% endblock %}
+{% block content %}
+<div class="animate-in" style="max-width: 1200px; margin: 0 auto;">
+  <div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+      <div>
+        <h2 style="margin: 0;">Trade Execution Queue</h2>
+        <div class="muted" style="margin-top: 0.3rem;">
+          Mode: <strong>{{ broker_mode | upper }}</strong>
+          {% if broker_mode == 'live' %}
+          · Broker: <strong>{{ live_broker_name | upper }}</strong>
+          · Live enabled: <strong>{{ 'YES' if allow_live_execution else 'NO' }}</strong>
+          {% endif %}
+        </div>
+      </div>
+      <form method="get" class="inline">
+        <select name="status" style="width: auto;">
+          <option value="" {% if not status_filter %}selected{% endif %}>All</option>
+          <option value="PENDING" {% if status_filter=='PENDING' %}selected{% endif %}>Pending</option>
+          <option value="APPROVED" {% if status_filter=='APPROVED' %}selected{% endif %}>Approved</option>
+          <option value="EXECUTED" {% if status_filter=='EXECUTED' %}selected{% endif %}>Executed</option>
+          <option value="REJECTED" {% if status_filter=='REJECTED' %}selected{% endif %}>Rejected</option>
+        </select>
+        <button type="submit" class="btn btn-accent" style="padding: 0.5rem 1rem;">Filter</button>
+      </form>
+    </div>
+
+    {% if trades %}
+    <div style="overflow-x: auto;">
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Symbol</th>
+            <th>Side</th>
+            <th>Confidence</th>
+            <th>Expected Return</th>
+            <th>Reference</th>
+            <th>Status</th>
+            <th>Reasoning</th>
+            <th style="text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for trade in trades %}
+          <tr style="border-top: 1px solid var(--border);">
+            <td style="padding: 10px 0;" class="muted">{{ trade.id }}</td>
+            <td style="padding: 10px 0; font-weight: 600;">{{ trade.symbol }}</td>
+            <td style="padding: 10px 0;">{{ trade.side }}</td>
+            <td style="padding: 10px 0;">{{ "%.1f%%" | format(trade.confidence_pct) }}</td>
+            <td style="padding: 10px 0;">{{ "%.2f%%" | format(trade.expected_return_pct) }}</td>
+            <td style="padding: 10px 0;">{{ "%.2f" | format(trade.reference_price) }}</td>
+            <td style="padding: 10px 0;">{{ trade.status }}</td>
+            <td style="padding: 10px 0; max-width: 340px;" class="muted">{{ trade.reasoning }}</td>
+            <td style="padding: 10px 0; text-align: right;">
+              {% if workspace_role not in ['owner', 'admin'] %}
+              <span class="muted">Read-only</span>
+              {% elif trade.status == 'PENDING' %}
+              <form method="post" action="{{ url_for('approve_trade_route', trade_id=trade.id) }}" style="display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="btn btn-primary" style="padding: 0.35rem 0.8rem;">Approve</button>
+              </form>
+              <form method="post" action="{{ url_for('reject_trade_route', trade_id=trade.id) }}" style="display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="btn btn-accent" style="padding: 0.35rem 0.8rem;">Reject</button>
+              </form>
+              {% elif trade.status == 'APPROVED' %}
+              <form method="post" action="{{ url_for('execute_trade_route', trade_id=trade.id) }}" style="display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="number" name="price" step="0.01" placeholder="Price" style="width: 90px; display: inline-block; padding: 0.35rem 0.5rem;">
+                <button type="submit" class="btn btn-primary" style="padding: 0.35rem 0.8rem;">Execute</button>
+              </form>
+              {% else %}
+              <span class="muted">No action</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="muted" style="margin: 0;">No trades found for this filter.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

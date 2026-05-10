@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}Reports{% endblock %}
+{% block content %}
+<div class="animate-in" style="max-width: 1000px; margin: 0 auto; display: flex; flex-direction: column; gap: 2.5rem;">
+  <!-- Reports Section -->
+  <div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+      <h2 style="margin: 0;">Forecast Reports</h2>
+      <span class="pill">{{ reports | length }} Available</span>
+    </div>
+
+    {% if reports %}
+    <div style="overflow-x: auto;">
+      <table class="sortable-table" style="width: 100%; border-collapse: separate; border-spacing: 0;">
+        <thead>
+          <tr>
+            <th class="sortable" data-type="text" style="padding-bottom: 1rem;">Generated Date</th>
+            <th style="padding-bottom: 1rem; text-align: right;">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for report in reports %}
+          <tr style="border-top: 1px solid var(--border);">
+            <td style="padding: 1.25rem 0; font-weight: 500; font-family: monospace; font-size: 1rem;">
+              📅 {{ report.report_date }}
+            </td>
+            <td style="padding: 1.25rem 0; text-align: right;">
+              <a href="{{ url_for('report_index', report_date=report.report_date) }}" class="btn btn-accent"
+                style="padding: 0.5rem 1rem; font-size: 0.875rem;">
+                View Full Report →
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div style="padding: 3rem; text-align: center; background: #f8fafc; border-radius: 12px;">
+      <p class="muted" style="margin: 0;">No reports generated yet. Run the forecast engine from the dashboard.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Run History Section -->
+  <div class="card">
+    <h3 style="margin-bottom: 2rem;">Engine Execution History</h3>
+    {% if runs %}
+    <div style="overflow-x: auto;">
+      <table class="sortable-table" style="width: 100%; border-collapse: separate; border-spacing: 0;">
+        <thead>
+          <tr>
+            <th class="sortable" data-type="text" style="padding-bottom: 1rem;">Status</th>
+            <th class="sortable" data-type="text" style="padding-bottom: 1rem;">Timeline</th>
+            <th style="padding-bottom: 1rem;">Result</th>
+            <th class="sortable" data-type="text" style="padding-bottom: 1rem; text-align: right;">Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for run in runs %}
+          <tr style="border-top: 1px solid var(--border);">
+            <td style="padding: 1.25rem 0;">
+              <span class="pill"
+                style="background: {% if run.status == 'DONE' %}#ecfdf5; color: #059669;{% elif run.status == 'FAILED' %}#fef2f2; color: #dc2626;{% else %}#f8fafc; color: #64748b;{% endif %}">
+                {{ run.status }}
+              </span>
+            </td>
+            <td style="padding: 1.25rem 0; font-size: 0.875rem;">
+              <div style="font-weight: 500;">Start: {{ run.started_at }}</div>
+              <div class="muted">{% if run.finished_at %}End: {{ run.finished_at }}{% else %}In progress...{% endif %}
+              </div>
+              {% if run.status in ['RUNNING', 'QUEUED'] %}
+              <div style="height: 6px; border-radius: 999px; background: #e2e8f0; overflow: hidden; margin-top: 8px; max-width: 220px;">
+                <div style="height: 100%; width: {{ run.progress or 0 }}%; background: var(--accent);"></div>
+              </div>
+              {% endif %}
+            </td>
+            <td style="padding: 1.25rem 0;">
+              {% if run.report_date %}
+              <a href="{{ url_for('report_index', report_date=run.report_date) }}"
+                style="color: var(--accent); font-weight: 600;">Open Report</a>
+              {% else %}
+              <span class="muted">-</span>
+              {% endif %}
+            </td>
+            <td
+              style="padding: 1.25rem 0; text-align: right; font-size: 0.875rem; color: var(--text-muted); max-width: 250px;">
+              {{ run.message or 'Execution regular.' }}{% if run.status in ['RUNNING', 'QUEUED'] %} ({{ run.progress or 0 }}%){% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div style="padding: 3rem; text-align: center; background: #f8fafc; border-radius: 12px;">
+      <p class="muted" style="margin: 0;">No run history available.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+<script>
+  document.querySelectorAll('table.sortable-table').forEach((table) => {
+    const getCellValue = (row, idx) => row.children[idx].innerText.trim();
+    const comparer = (idx, type, asc) => (a, b) => {
+      const v1 = getCellValue(asc ? a : b, idx);
+      const v2 = getCellValue(asc ? b : a, idx);
+      if (type === 'number') {
+        const n1 = parseFloat(v1.replace('%','')) || 0;
+        const n2 = parseFloat(v2.replace('%','')) || 0;
+        return n1 - n2;
+      }
+      return v1.localeCompare(v2);
+    };
+
+    table.querySelectorAll('th.sortable').forEach((th, idx) => {
+      let asc = true;
+      th.addEventListener('click', () => {
+        const tbody = table.tBodies[0];
+        Array.from(tbody.querySelectorAll('tr'))
+          .sort(comparer(idx, th.dataset.type, asc))
+          .forEach(tr => tbody.appendChild(tr));
+        asc = !asc;
+      });
+    });
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Register{% endblock %}
+{% block content %}
+<div class="animate-in" style="max-width: 900px; margin: 0 auto;">
+  <div style="text-align: center; margin-bottom: 3rem;">
+    <h2>Get Started</h2>
+    <p>Join {{ app_name }} and take control of your financial future.</p>
+  </div>
+
+  <div class="grid grid-two" style="align-items: start;">
+    <div class="card">
+      <h2 style="margin-bottom: 0.5rem;">Create account</h2>
+      <p style="margin-bottom: 2rem;">Quick setup, permanent access.</p>
+
+      <form method="post" style="display: flex; flex-direction: column; gap: 1.5rem;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div>
+          <label>Email Address</label>
+          <input type="email" name="email" placeholder="you@example.com" required autofocus>
+        </div>
+        <div>
+          <label>Choose Password</label>
+          <input type="password" name="password" placeholder="••••••••" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">
+          Create My Portfolio
+        </button>
+      </form>
+
+      <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border); text-align: center;">
+        <p class="muted">
+          Already have an account? <a href="{{ url_for('login') }}">Login</a>
+        </p>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+      <div class="card" style="background: var(--primary); color: white;">
+        <h3 style="color: white; margin-bottom: 1rem;">Why join us?</h3>
+        <ul style="padding-left: 1.25rem; margin: 0; display: flex; flex-direction: column; gap: 1rem; color: #cbd5e1;">
+          <li><strong>Unlimited Forecasts:</strong> Run as many reports as you need for your favorite stocks.</li>
+          <li><strong>Custom Thresholds:</strong> Define your own risk and return parameters.</li>
+          <li><strong>Visual Insights:</strong> Interactive charts that make data easy to understand.</li>
+        </ul>
+      </div>
+      <div class="card" style="border: 1px dashed var(--accent);">
+        <p style="margin: 0; font-style: italic;">
+          "The {{ horizon_days }}-day forecast has completely changed how I look at my TSLA and NVDA positions."
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

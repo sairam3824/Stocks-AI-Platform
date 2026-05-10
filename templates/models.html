@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}Model Leaderboard{% endblock %}
+{% block content %}
+<div class="animate-in" style="max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 2rem;">
+  <div class="card">
+    <h2 style="margin-bottom: 0.5rem;">Model Leaderboard</h2>
+    <p class="muted">Backtest outcomes tracked from your forecast runs.</p>
+    {% if leaderboard %}
+    <div style="overflow-x: auto;">
+      <table class="sortable-table" style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr>
+            <th class="sortable" data-type="text">Model</th>
+            <th class="sortable" data-type="number">Avg MAPE</th>
+            <th class="sortable" data-type="number">Avg RMSE</th>
+            <th class="sortable" data-type="number">Win Rate</th>
+            <th class="sortable" data-type="number">Samples</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in leaderboard %}
+          <tr style="border-top: 1px solid var(--border);">
+            <td style="padding: 10px 0; font-weight: 600;">{{ row.model_name }}</td>
+            <td style="padding: 10px 0;">{{ "%.2f%%" | format(row.avg_mape) }}</td>
+            <td style="padding: 10px 0;">{{ "%.4f" | format(row.avg_rmse) }}</td>
+            <td style="padding: 10px 0;">{{ "%.1f%%" | format(row.win_rate) }}</td>
+            <td style="padding: 10px 0;">{{ row.count }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="muted">No model metrics yet. Run forecasts to populate this table.</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h2 style="margin-bottom: 0.5rem;">Rolling Accuracy By Symbol</h2>
+    <p class="muted">Rolling window uses last 10 evaluations per symbol/horizon.</p>
+    {% if symbol_accuracy %}
+    <div style="overflow-x: auto;">
+      <table class="sortable-table" style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr>
+            <th class="sortable" data-type="text">Symbol</th>
+            <th class="sortable" data-type="text">Horizon</th>
+            <th class="sortable" data-type="number">Rolling MAPE</th>
+            <th class="sortable" data-type="number">Rolling RMSE</th>
+            <th class="sortable" data-type="number">Trend Δ</th>
+            <th class="sortable" data-type="number">Samples</th>
+            <th class="sortable" data-type="text">Latest Model</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in symbol_accuracy %}
+          <tr style="border-top: 1px solid var(--border);">
+            <td style="padding: 10px 0; font-weight: 600;">{{ row.symbol }}</td>
+            <td style="padding: 10px 0;">{{ row.horizon }}</td>
+            <td style="padding: 10px 0;">{{ "%.2f%%" | format(row.rolling_mape) }}</td>
+            <td style="padding: 10px 0;">{{ "%.4f" | format(row.rolling_rmse) }}</td>
+            <td style="padding: 10px 0; color: {% if row.trend_delta >= 0 %}#16a34a{% else %}#dc2626{% endif %};">
+              {{ "%+.2f" | format(row.trend_delta) }}
+            </td>
+            <td style="padding: 10px 0;">{{ row.samples }}</td>
+            <td style="padding: 10px 0;">{{ row.latest_model }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="muted">No symbol-level metrics yet.</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h2 style="margin-bottom: 0.5rem;">Persisted Model Profiles</h2>
+    <p class="muted">These preferences are reused until retrain schedule triggers.</p>
+    {% if model_profiles %}
+    <div style="overflow-x: auto;">
+      <table class="sortable-table" style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr>
+            <th class="sortable" data-type="text">Symbol</th>
+            <th class="sortable" data-type="text">Horizon</th>
+            <th class="sortable" data-type="text">Preferred Model</th>
+            <th class="sortable" data-type="number">Last MAPE</th>
+            <th class="sortable" data-type="number">Last RMSE</th>
+            <th class="sortable" data-type="number">Samples</th>
+            <th class="sortable" data-type="text">Last Trained</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in model_profiles %}
+          <tr style="border-top: 1px solid var(--border);">
+            <td style="padding: 10px 0; font-weight: 600;">{{ row.symbol }}</td>
+            <td style="padding: 10px 0;">{{ row.horizon }}</td>
+            <td style="padding: 10px 0;">{{ row.preferred_model }}</td>
+            <td style="padding: 10px 0;">{{ "%.2f%%" | format(row.last_mape) }}</td>
+            <td style="padding: 10px 0;">{{ "%.4f" | format(row.last_rmse) }}</td>
+            <td style="padding: 10px 0;">{{ row.sample_count }}</td>
+            <td style="padding: 10px 0;">{{ row.last_trained_at }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="muted">No persisted model profiles yet.</p>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll('table.sortable-table').forEach((table) => {
+    const getCellValue = (row, idx) => row.children[idx].innerText.trim();
+    const comparer = (idx, type, asc) => (a, b) => {
+      const v1 = getCellValue(asc ? a : b, idx);
+      const v2 = getCellValue(asc ? b : a, idx);
+      if (type === 'number') {
+        const n1 = parseFloat(v1.replace('%', '')) || 0;
+        const n2 = parseFloat(v2.replace('%', '')) || 0;
+        return n1 - n2;
+      }
+      return v1.localeCompare(v2);
+    };
+    table.querySelectorAll('th.sortable').forEach((th, idx) => {
+      let asc = true;
+      th.style.cursor = 'pointer';
+      th.addEventListener('click', () => {
+        const tbody = table.tBodies[0];
+        Array.from(tbody.querySelectorAll('tr'))
+          .sort(comparer(idx, th.dataset.type, asc))
+          .forEach(tr => tbody.appendChild(tr));
+        asc = !asc;
+      });
+    });
+  });
+</script>
+{% endblock %}

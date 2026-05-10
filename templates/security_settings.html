@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Security{% endblock %}
+{% block content %}
+<div class="animate-in" style="max-width: 900px; margin: 0 auto;">
+  <div class="card" style="margin-bottom: 1.5rem;">
+    <h2>Security Settings</h2>
+    <p class="muted">Email verification: <strong>Disabled</strong></p>
+    <p class="muted">Two-factor auth: {% if user.twofa_enabled %}<strong>Enabled</strong>{% else %}<strong>Disabled</strong>{% endif %}</p>
+  </div>
+
+  <div class="card">
+    <h3>Two-Factor Authentication</h3>
+    {% if user.twofa_enabled %}
+    <form method="post" style="margin-top: 1rem;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="action" value="disable">
+      <button type="submit" class="btn btn-accent">Disable 2FA</button>
+    </form>
+    {% else %}
+    <form method="post" style="margin-top: 1rem;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="action" value="generate">
+      <button type="submit" class="btn btn-primary">Generate 2FA Secret</button>
+    </form>
+
+    {% if pending_twofa_secret %}
+    <div style="margin-top: 1rem; background: #f8fafc; border: 1px solid var(--border); border-radius: 10px; padding: 1rem;">
+      <p><strong>Secret:</strong> <code>{{ pending_twofa_secret }}</code></p>
+      {% if provisioning_uri %}
+      <p class="muted">Provisioning URI:</p>
+      <code style="display: block; white-space: pre-wrap;">{{ provisioning_uri }}</code>
+      {% endif %}
+      <form method="post" style="margin-top: 1rem; display: flex; gap: 0.5rem; align-items: center;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="action" value="enable">
+        <input type="text" name="otp_code" placeholder="Enter OTP from authenticator" required>
+        <button type="submit" class="btn btn-primary">Enable</button>
+      </form>
+    </div>
+    {% endif %}
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

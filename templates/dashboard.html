@@ -1,0 +1,381 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<style>
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    gap: 2rem;
+    align-items: start;
+  }
+
+  @media (max-width: 1024px) {
+    .dashboard-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .sticky-sidebar {
+    position: sticky;
+    top: 5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  tr:hover td {
+    background-color: #f8fafc;
+  }
+
+  .main-content-card {
+    min-width: 0;
+    /* Prevent table from breaking grid */
+  }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+
+  th {
+    text-align: left;
+    font-size: 0.8125rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+  }
+</style>
+
+<div class="dashboard-grid animate-in">
+  <!-- Main Content: Stock List -->
+  <div class="card main-content-card">
+    <div style="display: grid; grid-template-columns: 1fr auto; gap: 1rem; margin-bottom: 1.25rem; align-items: center;">
+      <div class="muted">
+        Plan: <strong>{{ usage.plan|upper }}</strong> · Role: <strong>{{ usage.role|upper }}</strong> ·
+        Usage: <strong>{{ usage.stocks_used }}/{{ usage.stocks_limit }}</strong> stocks
+      </div>
+      {% if workspaces %}
+      <form method="post" action="{{ url_for('switch_workspace') }}" class="inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <select name="workspace_id" style="width: auto;">
+          {% for ws in workspaces %}
+          <option value="{{ ws.id }}" {% if current_workspace_id==ws.id %}selected{% endif %}>{{ ws.name }}</option>
+          {% endfor %}
+        </select>
+        <button type="submit" class="btn btn-accent" style="padding: 0.5rem 0.8rem;">Switch</button>
+      </form>
+      {% endif %}
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+      <div>
+        <h2 style="margin: 0;">Your Stocks</h2>
+        <p class="muted" style="margin: 0.25rem 0 0;">{{ stocks | length }} tickers tracked · Horizon: {{ horizon_days
+          }} trading days</p>
+      </div>
+      {% if markets %}
+      <form method="get" class="inline">
+        <select name="market" style="width: auto;">
+          <option value="">All Markets</option>
+          {% for market in markets %}
+          <option value="{{ market }}" {% if market_filter==market %}selected{% endif %}>{{ market }}</option>
+          {% endfor %}
+        </select>
+        <button type="submit" class="btn btn-accent" style="padding: 0.5rem 1rem;">Filter</button>
+      </form>
+      {% endif %}
+    </div>
+
+    {% if stocks_by_market %}
+    <div style="overflow-x: auto;">
+      {% for market, group in stocks_by_market %}
+      <div style="margin-bottom: 2.5rem;">
+        <h3 style="margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+          <span style="font-size: 1.25rem;">{{ market_flags.get(market, market_flags.get('Other', '🌐')) }}</span> {{
+          market }}
+        </h3>
+        <table class="sortable-table" style="width: 100%; border-collapse: separate; border-spacing: 0;">
+          <thead>
+            <tr>
+              <th class="sortable" data-type="text" style="padding-bottom: 0.75rem;">Symbol</th>
+              <th class="sortable" data-type="text" style="padding-bottom: 0.75rem;">Company</th>
+              <th class="sortable" data-type="text" style="padding-bottom: 0.75rem;">Market</th>
+              <th class="sortable" data-type="number" style="padding-bottom: 0.75rem;">Min Ret %</th>
+              <th class="sortable" data-type="number" style="padding-bottom: 0.75rem;">Max Drop %</th>
+              <th class="sortable" data-type="text" style="padding-bottom: 0.75rem;">Stooq</th>
+              <th class="sortable" data-type="text" style="padding-bottom: 0.75rem;">Notes</th>
+              <th style="padding-bottom: 0.75rem; text-align: right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for stock in group %}
+            <tr style="border-top: 1px solid var(--border);">
+              <td style="padding: 1rem 0; font-weight: 600; color: var(--primary);">{{ stock.symbol }}</td>
+              <td style="padding: 1rem 0;">{{ stock.company_name or '-' }}</td>
+              <td style="padding: 1rem 0;">{{ stock.market or '-' }}</td>
+              <td style="padding: 1rem 0; font-family: monospace;">{{ '%.2f' | format(stock.min_return_pct) }}</td>
+              <td style="padding: 1rem 0; font-family: monospace;">{{ '%.2f' | format(stock.max_drop_pct) }}</td>
+              <td style="padding: 1rem 0;">{{ stock.stooq_symbol or '-' }}</td>
+              <td
+                style="padding: 1rem 0; font-size: 0.875rem; color: var(--text-muted); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                {{ stock.notes or '-' }}
+              </td>
+              <td style="padding: 1rem 0; text-align: right;">
+                {% if workspace_role in ['owner', 'admin'] %}
+                <form method="post" action="{{ url_for('delete_stock_route', stock_id=stock.id) }}"
+                  style="display: inline;">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                  <button type="submit" class="btn btn-accent"
+                    style="padding: 0.4rem 0.8rem; font-size: 0.75rem;">Delete</button>
+                </form>
+                {% else %}
+                <span class="muted">Read-only</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div
+      style="padding: 4rem 2rem; text-align: center; border: 2px dashed var(--border); border-radius: var(--radius);">
+      <p style="font-size: 1.125rem; margin-bottom: 1.5rem;">No stocks in your portfolio yet.</p>
+      <p class="muted">Add your first ticker using the form on the right to start forecasting.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Sidebar: Actions -->
+  <div class="sticky-sidebar">
+    <!-- Add Stock Card -->
+    <div class="card">
+      <h3 style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+        <span>➕</span> Add a Stock
+      </h3>
+      {% if workspace_role in ['owner', 'admin'] %}
+      <form method="post" action="{{ url_for('add_stock_route') }}"
+        style="display: flex; flex-direction: column; gap: 1.25rem;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div>
+          <label>Ticker Symbol (optional)</label>
+          <input type="text" name="symbol" placeholder="e.g. AAPL">
+        </div>
+        <div>
+          <label>Company Name (optional)</label>
+          <input type="text" name="company_name" id="company_name_input" placeholder="e.g. Apple Inc.">
+          <div id="company_suggestions" class="suggestions"></div>
+        </div>
+        <div>
+          <label>Market (optional)</label>
+          <input type="text" name="market" id="market_input" placeholder="US, India, UK">
+        </div>
+        <div>
+          <label>Stooq Symbol Override (optional)</label>
+          <input type="text" name="stooq_symbol" placeholder="brk.b.us">
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div>
+            <label>Min Return %</label>
+            <input type="number" name="min_return_pct" step="0.1" placeholder="Val">
+          </div>
+          <div>
+            <label>Max Drop %</label>
+            <input type="number" name="max_drop_pct" step="0.1" placeholder="Val">
+          </div>
+        </div>
+        <div>
+          <label>Notes (optional)</label>
+          <textarea name="notes" placeholder="Why this stock?" style="min-height: 80px;"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Add to Portfolio</button>
+      </form>
+      {% else %}
+      <p class="muted" style="margin: 0;">Read-only workspace role. Ask an admin/owner to modify stocks.</p>
+      {% endif %}
+    </div>
+
+    <!-- Forecast Engine Card -->
+    <div class="card">
+      <h3 style="margin-bottom: 1rem;">Forecast Engine</h3>
+      <p style="font-size: 0.875rem; margin-bottom: 1.5rem;">
+        Compute fresh price predictions and sentiment analysis for all tracked tickers.
+      </p>
+      {% if workspace_role in ['owner', 'admin'] %}
+      <form method="post" action="{{ url_for('run_forecast_route') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        {% if feature_intraday_model_selector %}
+        <div style="margin-bottom: 0.75rem;">
+          <label style="margin-bottom: 0.4rem;">Intraday Model</label>
+          <select name="intraday_model">
+            {% for model in intraday_models_enabled %}
+            <option value="{{ model }}" {% if model == intraday_model_default %}selected{% endif %}>
+              {{ model | upper }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
+        <button type="submit" class="btn btn-primary btn-block">
+          🚀 Run Forecast Now
+        </button>
+      </form>
+      {% else %}
+      <p class="muted" style="margin: 0;">Read-only workspace role. Run access is restricted.</p>
+      {% endif %}
+    </div>
+
+    {% if runs %}
+    <div class="card">
+      <h3 style="margin-bottom: 1rem;">Recent Runs</h3>
+      <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+        {% for run in runs %}
+        <div style="padding: 0.75rem; background: #f8fafc; border-radius: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+            <span style="font-weight: 600;">{{ run.status }}</span>
+            <span class="muted">{{ run.started_at }}</span>
+          </div>
+          {% if run.status in ['RUNNING', 'QUEUED'] %}
+          <div style="height: 6px; border-radius: 999px; background: #e2e8f0; overflow: hidden; margin-bottom: 0.5rem;">
+            <div style="height: 100%; width: {{ run.progress or 0 }}%; background: var(--accent);"></div>
+          </div>
+          {% endif %}
+          {% if run.report_date %}
+          <a href="{{ url_for('report_index', report_date=run.report_date) }}" style="font-size: 0.875rem;">Open
+            report</a>
+          {% else %}
+          <span class="muted" style="font-size: 0.875rem;">{{ run.message or 'Running...' }}{% if run.status in ['RUNNING', 'QUEUED'] %} ({{ run.progress or 0 }}%){% endif %}</span>
+          {% endif %}
+        </div>
+        {% endfor %}
+        <a href="{{ url_for('report_list') }}" style="text-align: center; font-size: 0.875rem; margin-top: 0.5rem;">See
+          all runs</a>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if reports %}
+    <!-- Recent Reports Card -->
+    <div class="card">
+      <h3 style="margin-bottom: 1rem;">Recent Reports</h3>
+      <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+        {% for report in reports[:5] %}
+        <a href="{{ url_for('report_index', report_date=report.report_date) }}"
+          style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #f8fafc; border-radius: 8px; font-size: 0.875rem;">
+          <span style="font-weight: 500;">{{ report.report_date }}</span>
+          <span style="color: var(--accent);">View →</span>
+        </a>
+        {% endfor %}
+        {% if reports | length > 5 %}
+        <a href="{{ url_for('report_list') }}" style="text-align: center; font-size: 0.875rem; margin-top: 0.5rem;">See
+          all reports</a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+  const companyInput = document.getElementById('company_name_input');
+  const suggestionsBox = document.getElementById('company_suggestions');
+  const marketInput = document.getElementById('market_input');
+  let debounceTimer;
+
+  function clearSuggestions() {
+    suggestionsBox.innerHTML = '';
+    suggestionsBox.style.display = 'none';
+  }
+
+  function showSuggestions(results) {
+    if (!results.length) {
+      clearSuggestions();
+      return;
+    }
+    const items = results.map(item => {
+      const exch = item.exchange_disp || item.exchange || '';
+      const market = item.market || '';
+      const meta = [exch, market].filter(Boolean).join(' · ');
+      const label = `${item.name} (${item.symbol})${meta ? ' · ' + meta : ''}`;
+      return `<div class=\"suggestion\" data-symbol=\"${item.symbol}\" data-name=\"${item.name}\" data-market=\"${market}\">${label}</div>`;
+    });
+    suggestionsBox.innerHTML = items.join('');
+    suggestionsBox.style.display = 'block';
+  }
+
+  if (companyInput) {
+    companyInput.addEventListener('input', (event) => {
+      const query = event.target.value.trim();
+      if (!query) {
+        clearSuggestions();
+        return;
+      }
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(async () => {
+        try {
+          const response = await fetch(`/api/symbols?query=${encodeURIComponent(query)}`);
+          const data = await response.json();
+          showSuggestions(data.results || []);
+        } catch (err) {
+          clearSuggestions();
+        }
+      }, 300);
+    });
+
+    suggestionsBox.addEventListener('click', (event) => {
+      const target = event.target.closest('.suggestion');
+      if (!target) return;
+      const symbolField = document.querySelector('input[name=\"symbol\"]');
+      companyInput.value = target.dataset.name || '';
+      if (symbolField && target.dataset.symbol) {
+        symbolField.value = target.dataset.symbol;
+      }
+      if (marketInput && target.dataset.market) {
+        marketInput.value = target.dataset.market;
+      }
+      clearSuggestions();
+    });
+
+    document.addEventListener('click', (event) => {
+      if (!suggestionsBox.contains(event.target) && event.target !== companyInput) {
+        clearSuggestions();
+      }
+    });
+  }
+
+  // Sorting Logic for Stock Tables
+  document.querySelectorAll('table.sortable-table').forEach((table) => {
+    const getCellValue = (row, idx) => row.children[idx].innerText.trim();
+    const comparer = (idx, type, asc) => (a, b) => {
+      const v1 = getCellValue(asc ? a : b, idx);
+      const v2 = getCellValue(asc ? b : a, idx);
+      if (type === 'number') {
+        const n1 = parseFloat(v1) || 0;
+        const n2 = parseFloat(v2) || 0;
+        return n1 - n2;
+      }
+      return v1.localeCompare(v2);
+    };
+
+    table.querySelectorAll('th.sortable').forEach((th, idx) => {
+      let asc = true;
+      th.style.cursor = 'pointer';
+      th.addEventListener('click', () => {
+        const tbody = table.tBodies[0];
+        Array.from(tbody.querySelectorAll('tr'))
+          .sort(comparer(idx, th.dataset.type, asc))
+          .forEach(tr => tbody.appendChild(tr));
+
+        // Add visual cues
+        table.querySelectorAll('th.sortable').forEach(h => h.innerText = h.innerText.replace(/ [↑↓]$/, ''));
+        th.innerText += asc ? ' ↑' : ' ↓';
+
+        asc = !asc;
+      });
+    });
+  });
+</script>
+{% endblock %}
